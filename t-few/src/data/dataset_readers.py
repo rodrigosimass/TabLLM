@@ -5,7 +5,13 @@ import pickle
 
 import numpy as np
 import yaml
-from datasets import load_dataset, load_from_disk, concatenate_datasets, DatasetDict, Dataset
+from datasets import (
+    load_dataset,
+    load_from_disk,
+    concatenate_datasets,
+    DatasetDict,
+    Dataset,
+)
 from promptsource.templates import DatasetTemplates
 import pkg_resources
 from promptsource import templates
@@ -16,20 +22,20 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, f1_score
 
 templates_for_custom_tasks = {
-    'income': '50000_dollars',
-    'car': 'rate_decision',
-    'heart': 'heart_disease',
-    'diabetes': 'diabetes',
-    'creditg': 'creditg',
-    'bank': 'bank',
-    'blood': 'blood',
-    'jungle': 'jungle',
-    'calhousing': 'calhousing',
+    "income": "50000_dollars",
+    "car": "rate_decision",
+    "heart": "heart_disease",
+    "diabetes": "diabetes",
+    "creditg": "creditg",
+    "bank": "bank",
+    "blood": "blood",
+    "jungle": "jungle",
+    "calhousing": "calhousing",
 }
 
 
 def is_custom_task(cfg):
-    task = cfg.dataset.split('_')[0].lower()
+    task = cfg.dataset.split("_")[0].lower()
     if task in templates_for_custom_tasks.keys():
         return True
 
@@ -64,15 +70,17 @@ def get_dataset_reader(config):
     dataset_class = None
     if config.dataset in dataset_dict:
         dataset_class = dataset_dict[config.dataset]
-    elif str(config.dataset).split('_' + str(config.num_shot))[0] in dataset_dict:
-        dataset_class = dataset_dict[str(config.dataset).split('_' + str(config.num_shot))[0]]
+    elif str(config.dataset).split("_" + str(config.num_shot))[0] in dataset_dict:
+        dataset_class = dataset_dict[
+            str(config.dataset).split("_" + str(config.num_shot))[0]
+        ]
     else:
         dataset_class = CustomCategoricalReader
 
     return dataset_class(config)
 
 
-DATASETS_OFFLINE = "/root/TabLLM/datasets_serialized"
+DATASETS_OFFLINE = "/Users/rodri/Desktop/TabLLM/datasets_serialized"
 MAX_EXAMPLES_PER_DATASET = 500_000
 TASK_BLACKLIST = [
     # Tasks which often tokenize to > 1024 tokens currently
@@ -173,19 +181,29 @@ class BaseDatasetReader(object):
         """
         if os.path.exists(DATASETS_OFFLINE):
             try:
-                orig_data = load_from_disk(os.path.join(DATASETS_OFFLINE, *self.dataset_stash))[split]
+                orig_data = load_from_disk(
+                    os.path.join(DATASETS_OFFLINE, *self.dataset_stash)
+                )[split]
             except FileNotFoundError:
-                orig_data = load_from_disk(os.path.join(DATASETS_OFFLINE, self.dataset_stash[0]))[split]
+                orig_data = load_from_disk(
+                    os.path.join(DATASETS_OFFLINE, self.dataset_stash[0])
+                )[split]
         else:
-            orig_data = load_dataset(*self.dataset_stash, split=split, cache_dir=os.environ["HF_HOME"])
+            orig_data = load_dataset(
+                *self.dataset_stash, split=split, cache_dir=os.environ["HF_HOME"]
+            )
         return orig_data
 
     def read_few_shot_dataset(self):
-        file_dir = os.path.join("data", "few_shot", self.config.dataset, f"{self.config.num_shot}_shot")
+        file_dir = os.path.join(
+            "data", "few_shot", self.config.dataset, f"{self.config.num_shot}_shot"
+        )
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
 
-        file_path = os.path.join(file_dir, f"{self.config.few_shot_random_seed}_seed.jsonl")
+        file_path = os.path.join(
+            file_dir, f"{self.config.few_shot_random_seed}_seed.jsonl"
+        )
 
         if os.path.exists(file_path):
             with open(file_path, "r") as fin:
@@ -213,14 +231,16 @@ class BaseDatasetReader(object):
         return selected_data
 
     def compute_metric(self, accumulated):
-        matching = [a == b for a, b in zip(accumulated["prediction"], accumulated["label"])]
+        matching = [
+            a == b for a, b in zip(accumulated["prediction"], accumulated["label"])
+        ]
         accuracy = sum(matching) / len(matching)
         return {"accuracy": accuracy}
 
 
 class CustomCategoricalReader(BaseDatasetReader):
     def __init__(self, config):
-        task = config.dataset.split('_')[0].lower()
+        task = config.dataset.split("_")[0].lower()
         # Select correct subtask (especially for right template)
         subtask = templates_for_custom_tasks[task]
         assert subtask is not None
@@ -229,10 +249,15 @@ class CustomCategoricalReader(BaseDatasetReader):
     # There are no pre-defined templates for this custom task, so load them manually by hijacking this function.
     def get_template(self, template_idx):
         # Add custom template
-        task = self.config.dataset.split('_')[0].lower()
-        yaml_dict = yaml.load(open('/root/TabLLM/templates/templates_' + task + '.yaml', "r"),
-                              Loader=yaml.FullLoader)
-        prompts = yaml_dict['templates']
+        task = self.config.dataset.split("_")[0].lower()
+        yaml_dict = yaml.load(
+            open(
+                "/Users/rodri/Desktop/TabLLM/templates/templates_" + task + ".yaml",
+                "r",
+            ),
+            Loader=yaml.FullLoader,
+        )
+        prompts = yaml_dict["templates"]
 
         # Set DatasetTemplates object in self.templates to None bs cannot build it here
         self.templates = None
@@ -241,29 +266,37 @@ class CustomCategoricalReader(BaseDatasetReader):
 
     def read_orig_dataset(self, split):
         # External datasets are not yet shuffled, so do it now
-        orig_data = load_from_disk(os.path.join(DATASETS_OFFLINE, self.dataset_stash[0]))
+        orig_data = load_from_disk(
+            os.path.join(DATASETS_OFFLINE, self.dataset_stash[0])
+        )
         # Debug output for importance
         split_data = True  # Default True
         if split_data:
             data = orig_data.train_test_split(test_size=0.20, seed=self.config.seed)
-            data2 = data['test'].train_test_split(test_size=0.50, seed=self.config.seed)
+            data2 = data["test"].train_test_split(test_size=0.50, seed=self.config.seed)
             # No validation/test split used for external datasets
-            dataset_dict = DatasetDict({'train': data['train'],
-                                        'validation': concatenate_datasets([data2['train'], data2['test']]),
-                                        'test': Dataset.from_dict({'note': [], 'label': []})})
+            dataset_dict = DatasetDict(
+                {
+                    "train": data["train"],
+                    "validation": concatenate_datasets([data2["train"], data2["test"]]),
+                    "test": Dataset.from_dict({"note": [], "label": []}),
+                }
+            )
             orig_data = dataset_dict[split]
 
         # In case dataset has no idx per example, add that here bc manually created ones might not have an idx.
-        if 'idx' not in orig_data.column_names:
-            orig_data = orig_data.add_column(name='idx', column=range(0, orig_data.num_rows))
+        if "idx" not in orig_data.column_names:
+            orig_data = orig_data.add_column(
+                name="idx", column=range(0, orig_data.num_rows)
+            )
 
         return orig_data
 
     def _sample_few_shot_data(self, orig_data):
-        if self.config.num_shot == 'all':
+        if self.config.num_shot == "all":
             return [x for x in orig_data]
 
-        if self.config.num_shot == 0 or self.config.num_shot == '0':
+        if self.config.num_shot == 0 or self.config.num_shot == "0":
             return []
 
         # if not self.config.balanced_ibc:
@@ -272,8 +305,10 @@ class CustomCategoricalReader(BaseDatasetReader):
         saved_random_state = np.random.get_state()
         np.random.seed(self.config.few_shot_random_seed)
         # Create a balanced dataset for categorical data
-        labels = {label: len([ex['idx'] for ex in orig_data if ex['label'] == label])
-                  for label in list(set(ex['label'] for ex in orig_data))}
+        labels = {
+            label: len([ex["idx"] for ex in orig_data if ex["label"] == label])
+            for label in list(set(ex["label"] for ex in orig_data))
+        }
         num_labels = len(labels.keys())
         ex_label = int(self.config.num_shot / num_labels)
         ex_last_label = self.config.num_shot - ((num_labels - 1) * ex_label)
@@ -284,7 +319,7 @@ class CustomCategoricalReader(BaseDatasetReader):
         old_num_labels = []
         datasets_per_label = []
         for i, label in enumerate(labels.keys()):
-            indices = [ex['idx'] for ex in orig_data if ex['label'] == label]
+            indices = [ex["idx"] for ex in orig_data if ex["label"] == label]
             old_num_labels.append(len(indices))
             # Sample with replacement from label indices
             samples_indices = list(np.random.choice(indices, ex_per_label[i]))
@@ -293,9 +328,13 @@ class CustomCategoricalReader(BaseDatasetReader):
 
         # Check new labels
         old_labels = labels
-        labels = {label: len([ex['idx'] for ex in orig_data if ex['label'] == label])
-                  for label in list(set(ex['label'] for ex in orig_data))}
-        print(f"Via sampling with replacement old label distribution {old_labels} to new {labels}")
+        labels = {
+            label: len([ex["idx"] for ex in orig_data if ex["label"] == label])
+            for label in list(set(ex["label"] for ex in orig_data))
+        }
+        print(
+            f"Via sampling with replacement old label distribution {old_labels} to new {labels}"
+        )
         assert sum(labels.values()) == self.config.num_shot
         assert len(orig_data) == self.config.num_shot
 
@@ -307,29 +346,47 @@ class CustomCategoricalReader(BaseDatasetReader):
         metrics = super().compute_metric(accumulated)
         # print(accumulated['probabilities'])
 
-        binary = all([True if l in [0, 1] else False for l in accumulated['label']])
+        binary = all([True if l in [0, 1] else False for l in accumulated["label"]])
         if binary:
-            pos_probs = [p[1] for p in accumulated['probabilities']]
-            roc_auc = roc_auc_score(accumulated['label'], pos_probs)
-            pr_auc = pr_auc_score(accumulated['label'], pos_probs)
+            pos_probs = [p[1] for p in accumulated["probabilities"]]
+            roc_auc = roc_auc_score(accumulated["label"], pos_probs)
+            pr_auc = pr_auc_score(accumulated["label"], pos_probs)
         else:
-            probs = [p for p in accumulated['probabilities']]
-            roc_auc = roc_auc_score(accumulated['label'], probs, multi_class='ovr', average='macro')
+            probs = [p for p in accumulated["probabilities"]]
+            roc_auc = roc_auc_score(
+                accumulated["label"], probs, multi_class="ovr", average="macro"
+            )
             # Abuse pr for AUC ovo here
-            pr_auc = roc_auc_score(accumulated['label'], probs, multi_class='ovo', average='macro')
+            pr_auc = roc_auc_score(
+                accumulated["label"], probs, multi_class="ovo", average="macro"
+            )
 
-        micro_f1 = f1_score(accumulated['label'], accumulated['prediction'], average='micro')
-        macro_f1 = f1_score(accumulated['label'], accumulated['prediction'], average='macro')
-        metrics = {'AUC': roc_auc, 'PR': pr_auc, 'micro_f1': micro_f1, 'macro_f1': macro_f1,  **metrics}
+        micro_f1 = f1_score(
+            accumulated["label"], accumulated["prediction"], average="micro"
+        )
+        macro_f1 = f1_score(
+            accumulated["label"], accumulated["prediction"], average="macro"
+        )
+        metrics = {
+            "AUC": roc_auc,
+            "PR": pr_auc,
+            "micro_f1": micro_f1,
+            "macro_f1": macro_f1,
+            **metrics,
+        }
         # Also record number of instances evaluated
-        metrics = {**metrics, 'num': len(accumulated['prediction'])}
+        metrics = {**metrics, "num": len(accumulated["prediction"])}
 
         # Debug: Only for importance
         store_probabilities = False  # Default False
         if store_probabilities:
-            prop_output = 't0-probabilities-' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + '.p'
-            with open(prop_output, 'wb') as f:
-                pickle.dump(accumulated['probabilities'], f)
+            prop_output = (
+                "t0-probabilities-"
+                + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                + ".p"
+            )
+            with open(prop_output, "wb") as f:
+                pickle.dump(accumulated["probabilities"], f)
 
         return metrics
 
@@ -350,10 +407,14 @@ class StoryClozeReader(BaseDatasetReader):
             split = "test"
 
         if os.path.exists(DATASETS_OFFLINE):
-            orig_data = load_from_disk(os.path.join(DATASETS_OFFLINE, *self.dataset_stash))[split]
+            orig_data = load_from_disk(
+                os.path.join(DATASETS_OFFLINE, *self.dataset_stash)
+            )[split]
         else:
             orig_data = load_dataset(
-                *self.dataset_stash, split=split, data_dir="/fruitbasket/datasets/hugging_face/story_cloze"
+                *self.dataset_stash,
+                split=split,
+                data_dir="/fruitbasket/datasets/hugging_face/story_cloze",
             )
         orig_data = [example for example in orig_data]
         for idx, example in enumerate(orig_data):
@@ -427,7 +488,10 @@ class HSwagReader(BaseDatasetReader):
                     "prompt 2",
                     "The task is to generate the ending for the sentence: {{ctx}}|||{{answer_choices [label | int()]}}",
                 ),
-                ("prompt 3", "How does this sentence end? {{ctx}}|||{{answer_choices [label | int()]}}"),
+                (
+                    "prompt 3",
+                    "How does this sentence end? {{ctx}}|||{{answer_choices [label | int()]}}",
+                ),
                 (
                     "prompt 4",
                     "From the list of endings described below, what ending makes the most sense for the sentence {{ctx}}|||{{answer_choices [label | int()]}}",
@@ -445,7 +509,12 @@ class HSwagReader(BaseDatasetReader):
             self.templates = []
             for name, jinja in name_jinja:
                 self.templates.append(
-                    Template(name=name, jinja=jinja, reference="", answer_choices='{{endings | join("|||")}}')
+                    Template(
+                        name=name,
+                        jinja=jinja,
+                        reference="",
+                        answer_choices='{{endings | join("|||")}}',
+                    )
                 )
 
             if self.config.train_template_idx >= 0:
@@ -516,7 +585,10 @@ class T0MixtureReader(object):
             # SuperGLUE (except RTE and CB)
             "SGLUE": [],
         }
-        t0_eval: Dict[str, List[datatset_subset_tuple]] = {"BASE": [], "BIAS_FAIRNESS": []}
+        t0_eval: Dict[str, List[datatset_subset_tuple]] = {
+            "BASE": [],
+            "BIAS_FAIRNESS": [],
+        }
         gsheet: Dict[datatset_subset_tuple, Dict] = {}
         experiment_path = pkg_resources.resource_filename(__name__, "datasets.csv")
 
@@ -554,7 +626,11 @@ class T0MixtureReader(object):
 
         def get_task_name(dataset_name, subset_name, template_name):
             # Clean the text according to allowed characters for a task name
-            task_name = dataset_name + (f"_{subset_name}_" if subset_name is not None else "_") + template_name
+            task_name = (
+                dataset_name
+                + (f"_{subset_name}_" if subset_name is not None else "_")
+                + template_name
+            )
             return re.sub(r"[^\w\d\._]+", "_", task_name)
 
         for dataset_name, subset_name in all_templates.keys:
@@ -580,7 +656,10 @@ class T0MixtureReader(object):
 
                 task_name = get_task_name(dataset_name, subset_name, template_name)
 
-                if (dataset_name, subset_name) not in single_original_task and template.metadata.original_task:
+                if (
+                    dataset_name,
+                    subset_name,
+                ) not in single_original_task and template.metadata.original_task:
                     single_original_task[(dataset_name, subset_name)] = task_name
 
                 if template.metadata.original_task:
@@ -602,12 +681,21 @@ class T0MixtureReader(object):
 
         self.t0_base_tasks = []
         self.t0_base_templates = []
-        for (dataset_name, subset_name, template_name) in added_tasks:
+        for dataset_name, subset_name, template_name in added_tasks:
             task_name = get_task_name(dataset_name, subset_name, template_name)
             if task_name in t0_train_mixture["BASE"]:
                 if task_name not in TASK_BLACKLIST:
-                    self.t0_base_tasks.append((dataset_name, subset_name, template_name, mixture_cap[task_name]))
-                    template = all_templates.get_dataset(dataset_name, subset_name)[template_name]
+                    self.t0_base_tasks.append(
+                        (
+                            dataset_name,
+                            subset_name,
+                            template_name,
+                            mixture_cap[task_name],
+                        )
+                    )
+                    template = all_templates.get_dataset(dataset_name, subset_name)[
+                        template_name
+                    ]
                     self.t0_base_templates.append(template)
 
     def get_template(self):
@@ -620,7 +708,7 @@ class T0MixtureReader(object):
         :param split: split of data
         """
         orig_data = []
-        for (dataset_name, subset_name, template_name, cap) in self.t0_base_tasks:
+        for dataset_name, subset_name, template_name, cap in self.t0_base_tasks:
             if split == "train":
                 split_num = f"{split}[0:{cap}]"
             else:
@@ -632,7 +720,11 @@ class T0MixtureReader(object):
 
 class RaftTemplate(object):
     def __init__(self, config, answer_choices):
-        with open(os.path.join(os.path.dirname(__file__), "raft_prompt_construction_settings.jsonl")) as f:
+        with open(
+            os.path.join(
+                os.path.dirname(__file__), "raft_prompt_construction_settings.jsonl"
+            )
+        ) as f:
             data = [json.loads(line) for line in f]
             FIELD_ORDERING = data[0]
             INSTRUCTIONS = data[1]
@@ -647,13 +739,20 @@ class RaftTemplate(object):
             input_str = [
                 self.instruction.strip()
                 + " Possible labels: "
-                + ", ".join([choice for index, choice in enumerate(self.answer_choices)])
+                + ", ".join(
+                    [choice for index, choice in enumerate(self.answer_choices)]
+                )
             ]
         elif self.raft_labels_in_input_string == "newline":
             input_str = [
                 self.instruction.strip()
                 + "\nPossible labels:\n"
-                + "\n".join([str(index + 1) + ". " + choice for index, choice in enumerate(self.answer_choices)])
+                + "\n".join(
+                    [
+                        str(index + 1) + ". " + choice
+                        for index, choice in enumerate(self.answer_choices)
+                    ]
+                )
             ]
         else:
             input_str = [self.instruction.strip()]
@@ -681,7 +780,10 @@ class RaftReader(object):
         self.orig_data = load_dataset("ought/raft", name=self.dataset_name)
         self.answer_choices = self.orig_data["train"].features["Label"].names[1:]
         if self.config.dataset == "banking_77" and config.cleaned_answer_choices_b77:
-            self.answer_choices = [answer.replace("_", " ").replace(". ", " ") for answer in self.answer_choices]
+            self.answer_choices = [
+                answer.replace("_", " ").replace(". ", " ")
+                for answer in self.answer_choices
+            ]
 
         self.template = RaftTemplate(config, self.answer_choices)
 
@@ -701,11 +803,15 @@ class RaftReader(object):
             orig_data = [example for example in self.orig_data["train"]]
             if split == "train":
                 orig_data = (
-                    orig_data[: self.config.raft_validation_start] + orig_data[self.config.raft_validation_start + 10 :]
+                    orig_data[: self.config.raft_validation_start]
+                    + orig_data[self.config.raft_validation_start + 10 :]
                 )
                 assert len(orig_data) == 40
             elif split == "validation":
-                orig_data = orig_data[self.config.raft_validation_start : self.config.raft_validation_start + 10]
+                orig_data = orig_data[
+                    self.config.raft_validation_start : self.config.raft_validation_start
+                    + 10
+                ]
                 assert len(orig_data) == 10
         else:
             if split == "validation":
@@ -752,8 +858,12 @@ class RaftReader(object):
         predictions = accumulated["prediction"]
         for idx, prediction in zip(idxs, predictions):
             data.append({"ID": idx, "Label": self.answer_choices[prediction]})
-        result_df = pd.DataFrame(data=data, columns=["ID", "Label"]).astype({"ID": int, "Label": str})
+        result_df = pd.DataFrame(data=data, columns=["ID", "Label"]).astype(
+            {"ID": int, "Label": str}
+        )
         result_df.to_csv(self.config.dev_pred_file, index=False)
-        matching = [a == b for a, b in zip(accumulated["prediction"], accumulated["label"])]
+        matching = [
+            a == b for a, b in zip(accumulated["prediction"], accumulated["label"])
+        ]
         accuracy = sum(matching) / len(matching)
         return {"accuracy": accuracy}

@@ -20,7 +20,7 @@ We did not include the code to serialize and evaluate the private healthcare dat
 
 ## Setting the Correct Paths
 
-TabLLM and the [t-few project](https://github.com/r-three/t-few) use the path `/root/<project>` by default and we will assume that you cloned both repositories to this location for this readme, i.e., `/root/TabLLM` for TabLLM and `/root/t-few` for the [t-few](https://github.com/r-three/t-few) repository. It is very likely that you have to adapt those paths for your own setup. The easiest way is to replace all occurrences of `/root` with your own path. When you get an error running the code, please ensure that you set all paths correctly.
+TabLLM and the [t-few project](https://github.com/r-three/t-few) use the path `/Users/rodri/Desktop/<project>` by default and we will assume that you cloned both repositories to this location for this readme, i.e., `/Users/rodri/Desktop/TabLLM` for TabLLM and `/Users/rodri/Desktop/t-few` for the [t-few](https://github.com/r-three/t-few) repository. It is very likely that you have to adapt those paths for your own setup. The easiest way is to replace all occurrences of `/root` with your own path. When you get an error running the code, please ensure that you set all paths correctly.
 
 
 ## Preparing the Environments
@@ -63,7 +63,7 @@ CUDA_VISIBLE_DEVICES=0 python -m src.pl_train -c t03b.json+rte.json -k save_mode
 ```
 
 
-The result of the experiment should be stored in `/root/t-few/exp_out/first_exp`.
+The result of the experiment should be stored in `/Users/rodri/Desktop/t-few/exp_out/first_exp`.
 
 ## 1. Creating Serialized Datasets
 
@@ -82,16 +82,16 @@ We provide the *Text* serializations in `datasets_serialized`. The other seriali
 We used the codebase of the [t-few project](https://github.com/r-three/t-few) for our experiments. We made some small modifications to their code to enable experiments with our custom datasets and templates. We included all changed files in the `t-few` folder and you have to copy them over.
 
 ```
-cp /root/TabLLM/t-few/bin/few-shot-pretrained-100k.sh  /root/t-few/bin/
-cp /root/TabLLM/t-few/configs/* /root/t-few/configs/
-cp /root/TabLLM/t-few/src/models/EncoderDecoder.py /root/t-few/src/models/
-cp /root/TabLLM/t-few/src/data/* /root/t-few/src/data/
-cp /root/TabLLM/t-few/src/scripts/get_result_table.py /root/t-few/src/scripts/
+cp /Users/rodri/Desktop/TabLLM/t-few/bin/few-shot-pretrained-100k.sh  /Users/rodri/Desktop/t-few/bin/
+cp /Users/rodri/Desktop/TabLLM/t-few/configs/* /Users/rodri/Desktop/t-few/configs/
+cp /Users/rodri/Desktop/TabLLM/t-few/src/models/EncoderDecoder.py /Users/rodri/Desktop/t-few/src/models/
+cp /Users/rodri/Desktop/TabLLM/t-few/src/data/* /Users/rodri/Desktop/t-few/src/data/
+cp /Users/rodri/Desktop/TabLLM/t-few/src/scripts/get_result_table.py /Users/rodri/Desktop/t-few/src/scripts/
 ```
 
-Please, check that you also set the paths correctly for the t-few project. In particular, you should check `/root/t-few/src/data/dataset_readers.py` to ensure that `DATASETS_OFFLINE` in line 75 points to `/root/TabLLM/datasets_serialized` and `yaml_dict = yaml.load(open(...))` in line 233 uses the path `/root/TabLLM/templates/templates_`.
+Please, check that you also set the paths correctly for the t-few project. In particular, you should check `/Users/rodri/Desktop/t-few/src/data/dataset_readers.py` to ensure that `DATASETS_OFFLINE` in line 75 points to `/Users/rodri/Desktop/TabLLM/datasets_serialized` and `yaml_dict = yaml.load(open(...))` in line 233 uses the path `/Users/rodri/Desktop/TabLLM/templates/templates_`.
 
-The script `/root/t-few/bin/few-shot-pretrained-100k.sh` runs all our TabLLM experiments for the different serializations and stores them in `/root/t-few/exp_out`. To run the 4-shot heart experiment with the *Text* serialization using the T0-3B model, set the for-loops going over the different experimental settings in `/root/t-few/bin/few-shot-pretrained-100k.sh` to:
+The script `/Users/rodri/Desktop/t-few/bin/few-shot-pretrained-100k.sh` runs all our TabLLM experiments for the different serializations and stores them in `/Users/rodri/Desktop/t-few/exp_out`. To run the 4-shot heart experiment with the *Text* serialization using the T0-3B model, set the for-loops going over the different experimental settings in `/Users/rodri/Desktop/t-few/bin/few-shot-pretrained-100k.sh` to:
 
 ```
 for model in 't03b'
@@ -112,30 +112,30 @@ do
 done
 ```
 
-Then, you can run the specified setup from the t-few folder `/root/t-few` via:
+Then, you can run the specified setup from the t-few folder `/Users/rodri/Desktop/t-few` via:
 
 ```
 ./bin/few-shot-pretrained-100k.sh
 ```
 
-The result of the experiment should be stored in `/root/t-few/exp_out/t03b_heart_numshot4_seed*`. Note that we use no validation set, hence, in the code our test data is treated as validation (=pred) set. As a consequence, you can find the test performance for seed 42 in `/root/t-few/exp_out/t03b_heart_numshot4_seed42_ia3_pretrained100k/dev_scores.json`:
+The result of the experiment should be stored in `/Users/rodri/Desktop/t-few/exp_out/t03b_heart_numshot4_seed*`. Note that we use no validation set, hence, in the code our test data is treated as validation (=pred) set. As a consequence, you can find the test performance for seed 42 in `/Users/rodri/Desktop/t-few/exp_out/t03b_heart_numshot4_seed42_ia3_pretrained100k/dev_scores.json`:
 
 ```
-cat /root/t-few/exp_out/t03b_heart_numshot4_seed42_ia3_pretrained100k/dev_scores.json
+cat /Users/rodri/Desktop/t-few/exp_out/t03b_heart_numshot4_seed42_ia3_pretrained100k/dev_scores.json
 {"AUC": 0.617825311942959, "PR": 0.6409831261754565, "micro_f1": 0.5869565217391305, "macro_f1": 0.5511042629686697, "accuracy": 0.5869565217391305, "num": 184, "num_steps": -1, "score_gt": 0.8486858865489131, "score_cand": 0.9136485224184783}
 ```
 
-To collect the results of several runs, we slightly changed the `/root/t-few/src/scripts/get_result_table.py` script to report the mean AUC and standard deviation. For the above example, using the script looks as follows:
+To collect the results of several runs, we slightly changed the `/Users/rodri/Desktop/t-few/src/scripts/get_result_table.py` script to report the mean AUC and standard deviation. For the above example, using the script looks as follows:
 
 ```
-python /root/t-few/src/scripts/get_result_table.py -e t03b* -d heart
+python /Users/rodri/Desktop/t-few/src/scripts/get_result_table.py -e t03b* -d heart
 ================================================================================
 Find 5 experiments fit into t03b*
 heart: 67.65 (12.87)
 Save result to exp_out/summary.csv
 ```
 
-This results corresponds to the entry "TabLLM (T0 3B + Text Template)" for the heart dataset for 4 training examples (shots) on page 21 in our [paper](https://arxiv.org/abs/2210.10723). To obtain the other experiments you have to adapt `/root/t-few/bin/few-shot-pretrained-100k.sh` accordingly. For more information, please also consider the original [t-few repository](https://github.com/r-three/t-few) or raise an issue.
+This results corresponds to the entry "TabLLM (T0 3B + Text Template)" for the heart dataset for 4 training examples (shots) on page 21 in our [paper](https://arxiv.org/abs/2210.10723). To obtain the other experiments you have to adapt `/Users/rodri/Desktop/t-few/bin/few-shot-pretrained-100k.sh` accordingly. For more information, please also consider the original [t-few repository](https://github.com/r-three/t-few) or raise an issue.
 
 
 ## 3. Running the Baseline Models
